@@ -14,3 +14,7 @@
 - follows MSB first bit order
 - write_bits itterates from heighest to lowest bit, following Big Endian Order
 
+## CLRS 16.3 HUffman Coding
+- we compute the frequency of each character in a file
+- we give each character a variable length codeword (binary string)
+- frequent characters get short codewords and infrrequent characters get long code words

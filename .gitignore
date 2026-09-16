@@ -1,2 +1,8 @@
 .DS_Store
-  :
+build/
+build/
+*.o
+*.d
+dc
+run_tests
+claude/

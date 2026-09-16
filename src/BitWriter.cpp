@@ -1,7 +1,7 @@
 #include "BitWriter.hpp"
 
 BitWriter::BitWriter(std::vector<uint8_t>& dest_buffer)
-    : buffer(dest_buffer), current_byte(0), bit_count(0) {}
+    : buffer(dest_buffer), bits_total(0), current_byte(0), bit_count(0) {}
 
 BitWriter::~BitWriter() {
     flush();
@@ -9,9 +9,10 @@ BitWriter::~BitWriter() {
 
 void BitWriter::write_bit(bool bit) {
     if (bit) {
-        current_byte |= (1 << (7 - bit_count));
+        current_byte |= static_cast<uint8_t>(1u << (7 - bit_count));
     }
     bit_count++;
+    bits_total++;
 
     if (bit_count == 8) {
         buffer.push_back(current_byte);
@@ -21,9 +22,11 @@ void BitWriter::write_bit(bool bit) {
 }
 
 void BitWriter::write_bits(uint64_t value, int count) {
+    if (count <= 0) return;
+    if (count > 64) count = 64;
+
     for (int i = count - 1; i >= 0; --i) {
-        bool bit = (value >> i) & 1;
-        write_bit(bit);
+        write_bit(((value >> i) & 1) != 0);
     }
 }
 
