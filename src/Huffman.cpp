@@ -1,7 +1,7 @@
 #include "Huffman.hpp"
+#include <algorithm>
 
-
-hf::FrequencyTable countFrequencies(const uint8_t* data, std::size_t size){
+hf::FrequencyTable hf::countFrequencies(const uint8_t* data, std::size_t size){
 
     /* freq[b] := how many times byte value b ocures */
     hf::FrequencyTable freq{};
@@ -18,7 +18,7 @@ hf::FrequencyTable countFrequencies(const uint8_t* data, std::size_t size){
     return freq;
 }
 
-hf::FrequencyTable countFrequencies(const std::vector<uint8_t>& data){
+hf::FrequencyTable hf::countFrequencies(const std::vector<uint8_t>& data){
     return countFrequencies(data.data(), data.size());
 }
 
@@ -27,7 +27,7 @@ struct Node{
     int left; int right; int sym;
 };
 
-hf::CodeLengths buildCodeLengths(const hf::FrequencyTable& freq) {
+hf::CodeLengths hf::buildCodeLengths(const hf::FrequencyTable& freq) {
 
     /* lengths[b] := the number of bits in b's codeword || 0 if b never existed*/
     hf::CodeLengths lengths{};

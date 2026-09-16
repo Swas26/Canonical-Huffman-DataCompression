@@ -15,5 +15,5 @@ namespace hf{
     FrequencyTable countFrequencies(const std::vector<uint8_t>& data);
 
     /* this builds the Huffman tree for the symbols with a non-zero count and returns the depth of each leaf the tree is local to the call: it is born, walked on and freed before this function returns */
-    hf::CodeLengths buildCodeLengths(const hf::FrequencyTable& freq);
+    CodeLengths buildCodeLengths(const hf::FrequencyTable& freq);
 }
