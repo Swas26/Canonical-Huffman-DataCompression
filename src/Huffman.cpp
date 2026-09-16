@@ -49,6 +49,7 @@ hf::CodeLengths hf::buildCodeLengths(const hf::FrequencyTable& freq) {
     if (leaves.empty()) return lengths; /* empty input*/
     if (leaves.size() == 1) { /* eg aaaaaaa, teh tree would be a single node w/ no edges */
         lengths[nodes[leaves[0]].sym] = 1;
+        return lengths;
     }
 
     /* sorting by weights */
