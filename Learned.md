@@ -41,4 +41,10 @@
 
 
 
-y fifo n not a heap
+## Binary Trees
+- merging n items takes n - 1 merges and each merge gets an internal node
+- the most leaves well ever have is 256, thus 2 * 256 - 1 = 511
+
+## why stable sort
+- it keeps equal weight leaves in symbol order so same input always produces same code lengths
+- std::sort gets the order unspecified  whic makes teh input and outputs varried 
