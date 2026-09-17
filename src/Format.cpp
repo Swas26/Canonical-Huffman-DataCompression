@@ -3,21 +3,25 @@
 #include <algorithm>
 #include <array>
 #include <iterator>
-#include <tuple>
 
 /* header layout, multi byte ints are little endian (lowest byte first):
-    [0 .. 3]     magic "swas"
-    [4]          flags
-    [5 .. 12]    orig_len
-    [13 .. 16]   crc
-    [17 .. 272]  lengths[0] .. lengths[255], one byte each
+    [0... 3] magic "swas"
+    [4] flags
+    [5... 12] orig_len
+    [13... 16] crc
+    [17... 272] lengths[0] .. lengths[255]
 */
 
 /* if a field in Header changes size, HEADER_SIZE has to change with it */
-static_assert(sizeof(format::MAGIC) + sizeof(format::Header::flags) + sizeof(format::Header::orig_len)
-                  + sizeof(format::Header::crc) + std::tuple_size<hf::CodeLengths>::value
-                  == format::HEADER_SIZE,
-              "HEADER_SIZE does not match the fields of format::Header");
+static_assert(sizeof(format::MAGIC) 
+            + sizeof(format::Header::flags)
+            + sizeof(format::Header::orig_len)
+            + sizeof(format::Header::crc)
+            + sizeof(format::Header::lengths)
+            == format::HEADER_SIZE,
+            "HEADER_SIZE does not match the fields of format::Header");
+
+
 
 namespace {
     constexpr uint8_t KNOWN_FLAGS = format::FLAG_RAW;
@@ -38,6 +42,7 @@ namespace {
         return value;
     }
 }
+
 
 void format::writeHeader(const Header& h, std::vector<uint8_t>& out){
     out.insert(out.end(), std::begin(MAGIC), std::end(MAGIC));
