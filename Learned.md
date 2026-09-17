@@ -91,3 +91,10 @@ $$ \sum_{i=1}^n 2^{-l_i} \le 1$$
 - Shorter codes get shortes numbers
 - codes w/ same length are consecutive numbers
 - when 2 symbols have same length, the lower symbos gets smaller code 
+
+## Cyclic Redundency Check
+- its a polyonmial long division, !w/ carryovers and substraction is XOR
+- essentially we take the message M, append them w/ 32 zero bits 
+- divive by G, and keep the remainder R
+- then transmit M followed by R , we've replace the empty 0s with r now..
+- it should be exactly dividible by G now 
