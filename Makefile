@@ -3,6 +3,10 @@ CXXFLAGS = -std=c++17 -Wall -Wextra -g
 DEPFLAGS = -MMD -MP
 INCLUDES = -Isrc
 
+# GoogleTest (brew install googletest). gtest_main supplies main() for every test binary.
+GTEST_CFLAGS := $(shell pkg-config --cflags gtest_main)
+GTEST_LIBS   := $(shell pkg-config --libs gtest_main)
+
 SRC_DIR   = src
 TEST_DIR  = tests
 BUILD_DIR = build
@@ -17,7 +21,7 @@ MAIN_OBJ = $(BUILD_DIR)/$(SRC_DIR)/main.o
 LIB_OBJS = $(filter-out $(MAIN_OBJ),$(SRC_OBJS))
 
 MAIN_TARGET = dc
-# One binary per test file -- each test .cpp brings its own main().
+# One binary per test file -- each links gtest_main, so no test .cpp has a main().
 TEST_BINS = $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/bin/%,$(TEST_FILES))
 
 all: $(MAIN_TARGET) $(TEST_BINS)
@@ -25,9 +29,12 @@ all: $(MAIN_TARGET) $(TEST_BINS)
 $(MAIN_TARGET): $(SRC_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
+# Only test objects need the gtest headers.
+$(TEST_OBJS): INCLUDES += $(GTEST_CFLAGS)
+
 $(BUILD_DIR)/bin/%: $(BUILD_DIR)/$(TEST_DIR)/%.o $(LIB_OBJS)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(GTEST_LIBS)
 
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
