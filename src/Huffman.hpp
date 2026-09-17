@@ -27,6 +27,8 @@ namespace hf{
     /* true when every length is ,= max code len, and the lengths fit in a binary */
     bool lengthsAreValid(const CodeLengths& len);
 
-  
+    /* building canonical codes off of code lengths*/
+    CodeTable buildCanonicalCodes(const CodeLengths& len);
+    
 
 }

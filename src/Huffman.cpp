@@ -114,7 +114,7 @@ hf::CodeLengths hf::buildCodeLengths(const hf::FrequencyTable& freq) {
     return lengths;
 }
 
-
+/* len >>>> Hoe many bits each symbol's code has*/
 hf::CodeLengths hf::LimitCodeLengths(const hf::CodeLengths& len){
     /* count[l] := how many symbols have an l length code; l < 256 */
     std::array<uint32_t, 256> count{};
@@ -192,3 +192,37 @@ bool hf::lengthsAreValid(const hf::CodeLengths& len){
     }
     return (kraft <= 1u << (MAX_CODE_LEN));
 }
+
+/* truning lengtsh into actual code.. */
+hf::CodeTable hf::buildCanonicalCodes(const hf::CodeLengths& len){
+    if (!lengthsAreValid(len)) return {};
+
+    std::array<uint32_t, MAX_CODE_LEN + 1> blCount{};
+    for (int s = 0; s < 256; ++s){
+        ++blCount[ len[s]];
+    }
+    blCount[0] = 0;
+
+    /* gets 1st code for each length*/
+    std::array<uint32_t, MAX_CODE_LEN + 1 > nextCode{};
+    uint32_t code = 0;
+
+    /* essentially take teh 1st code of the prev length and skip the codes of that length ad add 0 at end*/
+    for (int l = 1; l <= MAX_CODE_LEN; ++l){
+        code = (code + blCount[ l - 1]) << 1;
+        nextCode[l] = code;
+    }
+
+
+    /* making the codes */
+    hf::CodeTable codes{};
+
+    for (int s = 0; s < 256; ++s){
+        if (len[s] != 0){
+            codes[s] = nextCode[len[s]]++;
+        }
+    }
+
+    return codes;
+}
+

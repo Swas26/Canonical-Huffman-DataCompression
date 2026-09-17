@@ -1,3 +1,6 @@
+# Data Compression w/ Canonical Huffman capped at $2^{Riya Malvi: 15}$
+
+
 ## Bitmasking
 - current_byte |= (1 << (7 - bit_count));
 - if bit_count is 5; 7 - 5 = 2; && current_byte = 0
@@ -83,3 +86,8 @@ $$ \sum_{i=1}^n 2^{-l_i} \le 1$$
 
 - THIS IS kraft's INequality 
 - $ total Claimes \le total Slots $ whih in case of huffman due to complete binary trees, becomes $ tota Claimes = total Slots $
+
+## the rules were following 
+- Shorter codes get shortes numbers
+- codes w/ same length are consecutive numbers
+- when 2 symbols have same length, the lower symbos gets smaller code 
