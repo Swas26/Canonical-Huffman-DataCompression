@@ -113,3 +113,82 @@ hf::CodeLengths hf::buildCodeLengths(const hf::FrequencyTable& freq) {
 
     return lengths;
 }
+
+
+hf::CodeLengths hf::LimitCodeLengths(const hf::CodeLengths& len){
+    /* count[l] := how many symbols have an l length code; l < 256 */
+    std::array<uint32_t, 256> count{};
+    int longest = 0;
+    for (int s = 0; s < 256; ++s){
+        if (len[s] == 0) continue;
+        ++count[len[s]];
+        longest = std::max(longest, static_cast<int>(len[s]));
+    }
+    if (longest <= MAX_CODE_LEN) return len;
+
+    /* shifting the deeper codes to lv 15*/
+    for (int l = MAX_CODE_LEN + 1; l <=longest; ++l){
+        count[ MAX_CODE_LEN] += count[l];
+        count[l] = 0;
+    }
+
+    uint32_t kraft = 0;
+    for (int l = 1; l <= MAX_CODE_LEN; ++l){
+        kraft += count[l] << (MAX_CODE_LEN - l);
+    }
+
+    const uint32_t full = 1u << MAX_CODE_LEN; /* 1 << 15 = 1000000000000000 */
+
+    while (kraft > full) {
+        --count[ MAX_CODE_LEN]; /* frees 1 slot*/
+
+        for (int l = MAX_CODE_LEN - 1; l > 0; --l){
+            if (count[l] != 0){
+
+                --count[l];
+                count[ l + 1] += 2;
+                break;
+            }
+        }
+
+        --kraft;
+    }
+
+    /* get new lengths*/
+    std::vector<int> order;
+    order.reserve(256);
+    for (int s = 0; s < 256; ++s) {
+        if (len[s] != 0) order.push_back(s);
+    }
+
+    /* sorting by old code length*/
+    std::stable_sort(order.begin(), order.end(),
+                     [&len](int a, int b) { return len[a] < len[b]; });
+
+
+
+    hf::CodeLengths limited{};
+    std::size_t next = 0;
+
+    /* */
+    for (int L = 1; L <= MAX_CODE_LEN; ++L) {
+        for (uint32_t k = 0; k < count[L]; ++k) {
+            limited[order[next++]] = static_cast<uint8_t>(L);
+        }
+    }
+    return limited;
+}
+
+
+bool hf::lengthsAreValid(const hf::CodeLengths& len){
+    uint32_t kraft = 0; /* 2 ^ 15*/
+
+    for (int s = 0; s < 256; ++s){
+        if( len[s] > MAX_CODE_LEN) return false;
+
+        if (len[s] != 0) {
+            kraft += 1u << (MAX_CODE_LEN - len[s]);
+        }
+    }
+    return (kraft <= 1u << (MAX_CODE_LEN));
+}
