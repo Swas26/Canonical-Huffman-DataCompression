@@ -1,4 +1,4 @@
-# Data Compression w/ Canonical Huffman capped at $2^{Riya Malvi: 15}$
+# Data Compression w/ Canonical Huffman capped$
 
 
 ## Bitmasking
