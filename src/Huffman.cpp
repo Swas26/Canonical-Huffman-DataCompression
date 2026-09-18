@@ -170,7 +170,7 @@ hf::CodeLengths hf::LimitCodeLengths(const hf::CodeLengths& len){
     hf::CodeLengths limited{};
     std::size_t next = 0;
 
-    /* */
+
     for (int L = 1; L <= MAX_CODE_LEN; ++L) {
         for (uint32_t k = 0; k < count[L]; ++k) {
             limited[order[next++]] = static_cast<uint8_t>(L);
@@ -194,7 +194,7 @@ bool hf::lengthsAreValid(const hf::CodeLengths& len){
 }
 
 /* truning lengtsh into actual code.. */
-hf::CodeTable hf::buildCanonicalCodes(const hf::CodeLengths& len){
+bool hf::buildCanonicalCodes(const hf::CodeLengths& len, hf::CodeTable& codes){
     if (!lengthsAreValid(len)) return {};
 
     std::array<uint32_t, MAX_CODE_LEN + 1> blCount{};
@@ -214,15 +214,14 @@ hf::CodeTable hf::buildCanonicalCodes(const hf::CodeLengths& len){
     }
 
 
-    /* making the codes */
-    hf::CodeTable codes{};
-
+    CodeTable built{};
     for (int s = 0; s < 256; ++s){
-        if (len[s] != 0){
-            codes[s] = nextCode[len[s]]++;
+        if (len[ s]){
+            built[s] = nextCode[ len[s]]++;
         }
     }
 
-    return codes;
+    codes = built;
+    return true;
 }
 
