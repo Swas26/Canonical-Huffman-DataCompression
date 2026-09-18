@@ -13,18 +13,18 @@
 */
 
 /* if a field in Header changes size, HEADER_SIZE has to change with it */
-static_assert(sizeof(format::MAGIC) 
-            + sizeof(format::Header::flags)
-            + sizeof(format::Header::orig_len)
-            + sizeof(format::Header::crc)
-            + sizeof(format::Header::lengths)
-            == format::HEADER_SIZE,
-            "HEADER_SIZE does not match the fields of format::Header");
+static_assert(sizeof(f::MAGIC) 
+            + sizeof(f::Header::flags)
+            + sizeof(f::Header::orig_len)
+            + sizeof(f::Header::crc)
+            + sizeof(f::Header::lengths)
+            == f::HEADER_SIZE,
+            "HEADER_SIZE does not match the fields of f::Header");
 
 
 
 namespace {
-    constexpr uint8_t KNOWN_FLAGS = format::FLAG_RAW;
+    constexpr uint8_t KNOWN_FLAGS = f::FLAG_RAW;
 
     /* appends the low nbytes of value, lowest byte first */
     void putLE(std::vector<uint8_t>& out, uint64_t value, std::size_t nbytes){
@@ -44,7 +44,7 @@ namespace {
 }
 
 
-void format::writeHeader(const Header& h, std::vector<uint8_t>& out){
+void f::writeHeader(const Header& h, std::vector<uint8_t>& out){
     out.insert(out.end(), std::begin(MAGIC), std::end(MAGIC));
     out.push_back(h.flags);
     putLE(out, h.orig_len, sizeof(h.orig_len));
@@ -52,7 +52,7 @@ void format::writeHeader(const Header& h, std::vector<uint8_t>& out){
     out.insert(out.end(), h.lengths.begin(), h.lengths.end());
 }
 
-bool format::readHeader(const uint8_t* data, std::size_t size, Header& h){
+bool f::readHeader(const uint8_t* data, std::size_t size, Header& h){
     /* the one length check: everything below reads inside these HEADER_SIZE bytes */
     if (data == nullptr || size < HEADER_SIZE) return false;
     if (!std::equal(std::begin(MAGIC), std::end(MAGIC), data)) return false;
@@ -112,7 +112,7 @@ namespace {
     constexpr std::array<uint32_t, 256> CRC_TABLE = makeCrcTable();
 }
 
-uint32_t format::crc32(const uint8_t* data, std::size_t size){
+uint32_t f::crc32(const uint8_t* data, std::size_t size){
     /* starting at all 1s makes leading zero bytes change the crc; with 0 "\0\0abc" and "abc" would match */
     uint32_t crc = 0xFFFFFFFFu;
 
@@ -127,6 +127,6 @@ uint32_t format::crc32(const uint8_t* data, std::size_t size){
     return crc ^ 0xFFFFFFFFu;
 }
 
-uint32_t format::crc32(const std::vector<uint8_t>& data){
+uint32_t f::crc32(const std::vector<uint8_t>& data){
     return crc32(data.data(), data.size());
 }

@@ -97,4 +97,12 @@ $$ \sum_{i=1}^n 2^{-l_i} \le 1$$
 - essentially we take the message M, append them w/ 32 zero bits 
 - divive by G, and keep the remainder R
 - then transmit M followed by R , we've replace the empty 0s with r now..
-- it should be exactly dividible by G now 
+- it should be exactly dividible by G now
+
+
+
+
+
+### For later
+- re implement bitio (reader & writer) as 1.. 
+- maybe in cli let user change FAST_BITS

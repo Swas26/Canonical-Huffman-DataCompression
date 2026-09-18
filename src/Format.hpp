@@ -9,7 +9,7 @@
 /* formats job is to turn a struct into bytes and vice versa*/
 
 
-namespace format {
+namespace f {
     constexpr std::size_t HEADER_SIZE = 273;
     constexpr uint8_t FLAG_RAW = 0x01;
     constexpr uint8_t MAGIC[4] = {'s', 'w', 'a', 's'};
