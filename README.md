@@ -3,11 +3,11 @@
 A file compressor written in C++17. It uses canonical Huffman coding with code lengths capped at 15 bits. The decoder itself is table-driven w/ Crc32 checks at every archive, and any files that Huffman can't compress are stored raw instead.
 
 ```
-$ ./swas c notes.md source.txt random.bin
-notes.md -> notes.md.swas  5.1 KiB -> 3.3 KiB  63.9%  1.1 ms
-source.txt -> source.txt.swas  55.9 KiB -> 33.5 KiB  59.9%  3.7 ms
-random.bin -> random.bin.swas  195.3 KiB -> 195.6 KiB  100.1%  2.7 ms  (stored raw)
-3 files  256.3 KiB -> 232.3 KiB  90.6%
+$ ./swas c Learned.md cli.cpp random.bin
+Learned.md -> Learned.md.swas  5.3 KB -> 3.4 KB  63.9%  0.5 ms
+cli.cpp -> cli.cpp.swas  27.2 KB -> 15.7 KB  57.6%  0.8 ms
+random.bin -> random.bin.swas  200.0 KB -> 200.3 KB  100.1%  0.9 ms  (stored raw)
+3 files  232.4 KB -> 219.3 KB  94.3%
 ```
 
 ## Building
@@ -95,13 +95,13 @@ abra.txt.swas
 `bench` compares Huffman against the entropy of the byte counts, times each step and checks that both decoders reproduce the input. Timings depend on the build and the machine; these are from the default debug build:
 
 ```
-$ ./swas b -n 5 source.txt
-source.txt  55.9 KiB -> 33.5 KiB  59.9%
-  entropy                 4.733 bits/byte
-  huffman                 4.752 bits/byte, 0.019 over the entropy
-  encode                  3.126 ms      18.3 MB/s
-  decode, table           2.899 ms      19.7 MB/s
-  decode, bit by bit      4.622 ms      12.4 MB/s   table is 1.6x faster
+$ ./swas b -n 5 cli.cpp
+cli.cpp  27.2 KB -> 15.7 KB  57.6%
+  entropy                 4.498 bits/byte
+  huffman                 4.531 bits/byte, 0.033 over the entropy
+  encode                  0.387 ms      70.3 MB/s
+  decode, table           0.401 ms      67.7 MB/s
+  decode, bit by bit      0.520 ms      52.2 MB/s   table is 1.3x faster
   round trip          ok, both decoders
 ```
 

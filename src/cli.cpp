@@ -217,17 +217,18 @@ bool cli::outputPath(const std::string& in, Command cmd, std::string& out){
 
 std::string cli::humanSize(uint64_t bytes){
     char buf[32];
-    if (bytes < 1024){
+    if (bytes < 1000){
         std::snprintf(buf, sizeof buf, "%llu B", static_cast<unsigned long long>(bytes));
         return buf;
     }
 
-    static const char* const UNITS[] = {"KiB", "MiB", "GiB", "TiB"};
-    double v = bytes / 1024.0;
+    /* decimal units, like Finder and the MB/s in bench: 1 MB = 1,000,000 bytes */
+    static const char* const UNITS[] = {"KB", "MB", "GB", "TB"};
+    double v = bytes / 1000.0;
     int u = 0;
-    /* 1023.95 not 1024: anything that would print as "1024.0" goes up a unit instead */
-    while (v >= 1023.95 && u < 3){
-        v /= 1024.0;
+    /* 999.95 not 1000: anything that would print as "1000.0" goes up a unit instead */
+    while (v >= 999.95 && u < 3){
+        v /= 1000.0;
         ++u;
     }
     std::snprintf(buf, sizeof buf, "%.1f %s", v, UNITS[u]);

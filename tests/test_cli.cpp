@@ -632,36 +632,41 @@ TEST_P(HumanSizeTest, MatchesPrintf) {
     EXPECT_EQ(cli::humanSize(GetParam().first), GetParam().second);
 }
 
-// expected strings from the same rules in Python ("%.1f", 1023.95 moves up a unit)
+// expected strings from the same rules in Python ("%.1f", 999.95 moves up a unit)
 INSTANTIATE_TEST_SUITE_P(
     Values, HumanSizeTest,
     ::testing::Values(std::make_pair(0ull, "0 B"), std::make_pair(1ull, "1 B"), std::make_pair(512ull, "512 B"),
-                      std::make_pair(1000ull, "1000 B"), std::make_pair(1023ull, "1023 B"),
-                      std::make_pair(1024ull, "1.0 KiB"), std::make_pair(1025ull, "1.0 KiB"),
-                      std::make_pair(1100ull, "1.1 KiB"), std::make_pair(1536ull, "1.5 KiB"),
-                      std::make_pair(2047ull, "2.0 KiB"), std::make_pair(2048ull, "2.0 KiB"),
-                      std::make_pair(10240ull, "10.0 KiB"), std::make_pair(1048524ull, "1023.9 KiB"),
-                      std::make_pair(1048525ull, "1.0 MiB"), std::make_pair(1048575ull, "1.0 MiB"),
-                      std::make_pair(1048576ull, "1.0 MiB"), std::make_pair(1572864ull, "1.5 MiB"),
-                      std::make_pair(123456789ull, "117.7 MiB"), std::make_pair(999999999ull, "953.7 MiB"),
-                      std::make_pair(1073741823ull, "1.0 GiB"), std::make_pair(1073741824ull, "1.0 GiB"),
-                      std::make_pair(1099511627775ull, "1.0 TiB"), std::make_pair(1099511627776ull, "1.0 TiB"),
-                      std::make_pair(1125899906842624ull, "1024.0 TiB"),
-                      std::make_pair(18446744073709551615ull, "16777216.0 TiB")));
+                      std::make_pair(999ull, "999 B"), std::make_pair(1000ull, "1.0 KB"),
+                      std::make_pair(1001ull, "1.0 KB"), std::make_pair(1024ull, "1.0 KB"),
+                      std::make_pair(1049ull, "1.0 KB"), std::make_pair(1050ull, "1.1 KB"),
+                      std::make_pair(1500ull, "1.5 KB"), std::make_pair(1999ull, "2.0 KB"),
+                      std::make_pair(2000ull, "2.0 KB"), std::make_pair(10000ull, "10.0 KB"),
+                      std::make_pair(999949ull, "999.9 KB"), std::make_pair(999950ull, "1.0 MB"),
+                      std::make_pair(1000000ull, "1.0 MB"), std::make_pair(1048576ull, "1.0 MB"),
+                      std::make_pair(1500000ull, "1.5 MB"), std::make_pair(6488666ull, "6.5 MB"),
+                      std::make_pair(123456789ull, "123.5 MB"), std::make_pair(999999999ull, "1.0 GB"),
+                      std::make_pair(1000000000ull, "1.0 GB"), std::make_pair(1073741824ull, "1.1 GB"),
+                      std::make_pair(999949999999ull, "999.9 GB"), std::make_pair(1000000000000ull, "1.0 TB"),
+                      std::make_pair(1000000000000000ull, "1000.0 TB"),
+                      std::make_pair(18446744073709551615ull, "18446744.1 TB")));
 
-TEST(HumanSizeSweepTest, EveryPowerOfTwoNeighbourhoodIsWellFormed) {
+TEST(HumanSizeSweepTest, EveryPowerNeighbourhoodIsWellFormed) {
     std::vector<uint64_t> values;
     for (int k = 0; k < 64; ++k) {
         const uint64_t p = 1ull << k;
         for (uint64_t v : {p - 1, p, p + 1, p + p / 2}) values.push_back(v);
     }
+    /* the unit boundaries are powers of ten */
+    uint64_t p = 1;
+    for (int k = 0; k < 20; ++k, p *= 10)
+        for (uint64_t v : {p - 1, p, p + 1, p + p / 2}) values.push_back(v);
     std::mt19937_64 rng(2);
     for (int i = 0; i < 5000; ++i) values.push_back(rng() >> (rng() % 64));
 
-    static const char* const UNITS[] = {"KiB", "MiB", "GiB", "TiB"};
+    static const char* const UNITS[] = {"KB", "MB", "GB", "TB"};
     for (uint64_t v : values) {
         const std::string s = cli::humanSize(v);
-        if (v < 1024) {
+        if (v < 1000) {
             ASSERT_EQ(s, std::to_string(v) + " B");
             continue;
         }
@@ -672,9 +677,9 @@ TEST(HumanSizeSweepTest, EveryPowerOfTwoNeighbourhoodIsWellFormed) {
         for (int k = 0; k < 4; ++k)
             if (std::strcmp(unit, UNITS[k]) == 0) u = k;
         ASSERT_GE(u, 0) << s;
-        const double scale = std::pow(1024.0, u + 1);
+        const double scale = std::pow(1000.0, u + 1);
         ASSERT_NEAR(shown * scale, static_cast<double>(v), 0.05 * scale + 1e-6 * static_cast<double>(v)) << s;
-        if (u < 3) ASSERT_LT(shown, 1024.0) << s << ": should have moved up a unit";
+        if (u < 3) ASSERT_LT(shown, 1000.0) << s << ": should have moved up a unit";
         ASSERT_GE(shown, 1.0) << s;
         ASSERT_EQ(s.find('.'), s.find(' ') - 2) << s << ": one decimal place";
     }
