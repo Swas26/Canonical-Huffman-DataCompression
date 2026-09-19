@@ -20,7 +20,7 @@ TEST_OBJS = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(TEST_FILES))
 MAIN_OBJ = $(BUILD_DIR)/$(SRC_DIR)/main.o
 LIB_OBJS = $(filter-out $(MAIN_OBJ),$(SRC_OBJS))
 
-MAIN_TARGET = dc
+MAIN_TARGET = swas
 # One binary per test file -- each links gtest_main, so no test .cpp has a main().
 TEST_BINS = $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/bin/%,$(TEST_FILES))
 
@@ -40,7 +40,7 @@ $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
-# test_main runs the dc binary itself, so it is built first.
+# test_main runs the swas binary itself, so it is built first.
 test: $(MAIN_TARGET) $(TEST_BINS)
 	@fail=0; for t in $(TEST_BINS); do \
 		echo "===== $$t ====="; \

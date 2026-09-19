@@ -3,6 +3,6 @@ build/
 build/
 *.o
 *.d
-dc
+swas
 run_tests
 claude/

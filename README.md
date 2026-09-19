@@ -1,9 +1,9 @@
 # swas
 
-A file compressor written from scratch in C++17. It uses byte-level canonical Huffman coding with code lengths capped at 15 bits. The decoder is table-driven, a CRC-32 checks every archive, and files that Huffman coding can't shrink are stored raw instead.
+A file compressor written in C++17. It uses canonical Huffman coding with code lengths capped at 15 bits. The decoder itself is table-driven w/ Crc32 checks at every archive, and any files that Huffman can't compress are stored raw instead.
 
 ```
-$ ./dc c notes.md source.txt random.bin
+$ ./swas c notes.md source.txt random.bin
 notes.md -> notes.md.swas  5.1 KiB -> 3.3 KiB  63.9%  1.1 ms
 source.txt -> source.txt.swas  55.9 KiB -> 33.5 KiB  59.9%  3.7 ms
 random.bin -> random.bin.swas  195.3 KiB -> 195.6 KiB  100.1%  2.7 ms  (stored raw)
@@ -12,12 +12,12 @@ random.bin -> random.bin.swas  195.3 KiB -> 195.6 KiB  100.1%  2.7 ms  (stored r
 
 ## Building
 
-You need a C++17 compiler, `make`, and, for the tests, GoogleTest and `pkg-config`. The code uses POSIX calls (`mkstemp`, `isatty`, `umask`) and has been built and tested on macOS.
+Requirmentrs are C++17 compiler, `make` and GoogleTest for the tests and `pkg-config`. The code uses POSIX calls (`mkstemp`, `isatty`, `umask`) and has been built and tested on macOS.
 
 ```sh
 brew install googletest pkg-config   # tests only
 
-make          # builds ./dc and the test binaries
+make          # builds ./swas and the test binaries
 make test     # builds everything and runs every test suite
 make clean
 ```
@@ -25,10 +25,8 @@ make clean
 The Makefile builds a debug binary (`-g`, no optimisation). An optimised build runs 1.6–2.5× faster in `bench`:
 
 ```sh
-make clean && make dc CXXFLAGS="-std=c++17 -O2 -Wall -Wextra"
+make clean && make swas CXXFLAGS="-std=c++17 -O2 -Wall -Wextra"
 ```
-
-The binary is called `dc`, the same name as the Unix desk calculator, so run it as `./dc`. It calls itself `swas` in its messages, and archives get the `.swas` suffix.
 
 ## Usage
 
@@ -38,8 +36,8 @@ usage: swas <command> [options] [file...]
 commands
   compress, c      file -> file.swas
   decompress, d    file.swas -> file
-  test, t          decode archives and check their crc, write nothing
-  info, i          an archive's header and code lengths
+  test, t          decode archives and check their crc and writes nothing
+  info, i          prints an archive's header and code lengths
   bench, b         time encode and both decoders on files, check the round trip
   help             this text
 
@@ -61,18 +59,18 @@ Exit status: 0 ok, 1 a file failed, 2 bad usage.
 Some examples:
 
 ```sh
-./dc c report.txt                 # -> report.txt.swas, report.txt is kept
-./dc d report.txt.swas            # -> report.txt (refuses if it exists; -f overwrites)
-./dc c --rm *.log                 # compress each log, delete the originals
-./dc d -o copy.txt report.txt.swas
-cat big.csv | ./dc c | ./dc d > same.csv
-./dc t *.swas                     # verify archives without writing anything
+./swas c report.txt               # -> report.txt.swas, report.txt is kept
+./swas d report.txt.swas          # -> report.txt (refuses if it exists; -f overwrites)
+./swas c --rm *.log               # compress each log, delete the originals
+./swas d -o copy.txt report.txt.swas
+cat big.csv | ./swas c | ./swas d > same.csv
+./swas t *.swas                   # verify archives without writing anything
 ```
 
 `info` reads only the header. With `--codes` it also lists every symbol's canonical code:
 
 ```
-$ ./dc i --codes abra.txt.swas
+$ ./swas i --codes abra.txt.swas
 abra.txt.swas
   format    huffman
   original  11 B (11 bytes)
@@ -97,7 +95,7 @@ abra.txt.swas
 `bench` compares Huffman against the entropy of the byte counts, times each step and checks that both decoders reproduce the input. Timings depend on the build and the machine; these are from the default debug build:
 
 ```
-$ ./dc b -n 5 source.txt
+$ ./swas b -n 5 source.txt
 source.txt  55.9 KiB -> 33.5 KiB  59.9%
   entropy                 4.733 bits/byte
   huffman                 4.752 bits/byte, 0.019 over the entropy
@@ -176,7 +174,7 @@ The payload is either the original bytes (raw) or the canonical Huffman codes, m
 | `test_format` | header layout and validation; CRC-32 against zlib's published values and its error-detection guarantees |
 | `test_codec` | exact archives; every error status; every truncation and bit flip of an archive; both decoders must always agree |
 | `test_cli` | argument parsing, output names, size formatting, every command end to end, file modes, terminal handling |
-| `test_main` | the built `./dc` binary through real shell pipes (uses `$DC_BIN` if set, skipped if there is no binary) |
+| `test_main` | the built `./swas` binary through real shell pipes (uses `$SWAS_BIN` if set, skipped if there is no binary) |
 
 To run one binary, or a subset of its tests:
 
