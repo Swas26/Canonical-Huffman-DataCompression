@@ -40,7 +40,8 @@ $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
-test: $(TEST_BINS)
+# test_main runs the dc binary itself, so it is built first.
+test: $(MAIN_TARGET) $(TEST_BINS)
 	@fail=0; for t in $(TEST_BINS); do \
 		echo "===== $$t ====="; \
 		./$$t || fail=1; \

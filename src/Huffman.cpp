@@ -200,6 +200,7 @@ int hf::maxLength(const hf::CodeLengths& len){
 /* truning lengtsh into actual code.. */
 bool hf::buildCanonicalCodes(const hf::CodeLengths& len, hf::CodeTable& codes){
     if (!lengthsAreValid(len)) return {};
+    if (maxLength(len) == 0) return {}; /* all 0 table, nothing to encode */
 
     std::array<uint32_t, MAX_CODE_LEN + 1> blCount{};
     for (int s = 0; s < 256; ++s){

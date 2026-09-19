@@ -1,8 +1,12 @@
 // test_bitio.cpp -- BitWriter -> BitReader round trips.
-// Not a single line of Huffman code is involved: if this passes, bit I/O is off
-// the suspect list for good.
+// No Huffman code is involved: if this passes, bit I/O is off the suspect list.
+//
+// The fixture writes 50,000 random (value, width) pairs once and checks one
+// property per test. The parameterized suites repeat the round trip for every
+// width, for random flush/align segmentations and for mixed bit/word writes.
 #include "BitReader.hpp"
 #include "BitWriter.hpp"
+#include "test_support.hpp"
 
 #include <gtest/gtest.h>
 
@@ -10,47 +14,52 @@
 #include <random>
 #include <vector>
 
-using Bytes = std::vector<uint8_t>;
+using ts::Bytes;
+using ts::maskTo;
 
 namespace {
 
-// Low `width` bits of `v`. width is 1..64, so the 1ull << 64 trap is avoided.
-uint64_t mask_to(uint64_t v, int width) {
-    return width >= 64 ? v : v & ((1ull << width) - 1);
-}
-
 struct Pair {
-    uint64_t raw;      // what gets handed to write_bits, high junk included
-    uint64_t value;    // what must come back out
+    uint64_t raw;     // what gets handed to write_bits, junk above the width included
+    uint64_t value;   // what must come back out
     int width;
 };
 
+std::vector<Pair> randomPairs(std::mt19937_64& rng, int n, int minWidth = 1, int maxWidth = 64) {
+    std::vector<Pair> pairs;
+    pairs.reserve(n);
+    for (int i = 0; i < n; ++i) {
+        const int width = minWidth + static_cast<int>(rng() % (maxWidth - minWidth + 1));
+        const uint64_t raw = rng();
+        pairs.push_back({raw, maskTo(raw, width), width});
+    }
+    return pairs;
+}
+
 }  // namespace
 
-// ---------------------------------------------------------------------------
-// The main event: 50,000 random (value, width) pairs, fixed seed. The stream is
-// built once and each property gets its own test.
-// ---------------------------------------------------------------------------
+// ===========================================================================
+// 50,000 random pairs, fixed seed, one stream shared by every test
+// ===========================================================================
 class BitIoRoundTripTest : public ::testing::Test {
 protected:
     static constexpr int N = 50000;
 
     static std::vector<Pair> pairs;
+    static std::vector<uint64_t> starts;   // bit position where each pair begins
     static Bytes buf;
     static uint64_t total_bits;
     static uint64_t writer_bits;
 
     static void SetUpTestSuite() {
-        std::mt19937_64 rng(20260916);   // fixed seed -> byte-identical every run
+        std::mt19937_64 rng(20260916);
+        pairs = randomPairs(rng, N);
 
-        pairs.clear();
-        pairs.reserve(N);
+        starts.clear();
         total_bits = 0;
-        for (int i = 0; i < N; ++i) {
-            int width = static_cast<int>(rng() % 64) + 1;   // 1..64
-            uint64_t raw = rng();                           // junk above `width` too
-            pairs.push_back({raw, mask_to(raw, width), width});
-            total_bits += static_cast<uint64_t>(width);
+        for (const Pair& p : pairs) {
+            starts.push_back(total_bits);
+            total_bits += static_cast<uint64_t>(p.width);
         }
 
         buf.clear();
@@ -62,6 +71,7 @@ protected:
 };
 
 std::vector<Pair> BitIoRoundTripTest::pairs;
+std::vector<uint64_t> BitIoRoundTripTest::starts;
 Bytes BitIoRoundTripTest::buf;
 uint64_t BitIoRoundTripTest::total_bits = 0;
 uint64_t BitIoRoundTripTest::writer_bits = 0;
@@ -76,290 +86,349 @@ TEST_F(BitIoRoundTripTest, BufferIsExactlyCeilBitsOverEightBytes) {
 
 TEST_F(BitIoRoundTripTest, EveryPairSurvivesTheRoundTrip) {
     BitReader r(buf);
-    int mismatches = 0;
     for (int i = 0; i < N; ++i) {
-        const Pair& p = pairs[i];
-        uint64_t got = r.read_bits(p.width);
-        if (got != p.value && mismatches++ < 5) {
-            ADD_FAILURE() << "symbol #" << i << " width " << p.width << ": want 0x"
-                          << std::hex << p.value << ", got 0x" << got;
-        }
+        ASSERT_EQ(r.read_bits(pairs[i].width), pairs[i].value)
+            << "pair " << i << " width " << pairs[i].width;
     }
-    EXPECT_EQ(mismatches, 0);
+    EXPECT_TRUE(r.ok());
+}
+
+TEST_F(BitIoRoundTripTest, EveryPairStartsWhereTheCountersSayItDoes) {
+    BitReader r(buf);
+    for (int i = 0; i < N; ++i) {
+        ASSERT_EQ(r.bits_read(), starts[i]) << "pair " << i;
+        r.skip_bits(pairs[i].width);
+    }
 }
 
 TEST_F(BitIoRoundTripTest, PeekAtWidthAgreesWithReadAtEveryPosition) {
     BitReader r(buf);
-    int mismatches = 0;
-    for (const Pair& p : pairs) {
-        uint64_t peeked = r.peek_bits(p.width);
-        if (peeked != r.read_bits(p.width)) ++mismatches;
+    for (int i = 0; i < N; ++i) {
+        const uint64_t peeked = r.peek_bits(pairs[i].width);
+        ASSERT_EQ(peeked, pairs[i].value) << "pair " << i;
+        ASSERT_EQ(r.read_bits(pairs[i].width), peeked) << "pair " << i;
     }
-    EXPECT_EQ(mismatches, 0);
 }
 
 TEST_F(BitIoRoundTripTest, SixtyFourBitPeekWindowHoldsTheNextCodeInItsTopBits) {
-    // How a table decoder looks at the stream: a fixed-width window.
+    // The table decoder's view of the stream: a wide window, the code at the top.
     BitReader r(buf);
-    int mismatches = 0;
-    for (const Pair& p : pairs) {
-        uint64_t window = r.peek_bits(64) >> (64 - p.width);
-        if (window != p.value) ++mismatches;
-        r.skip_bits(p.width);
+    for (int i = 0; i < N; ++i) {
+        const uint64_t window = r.peek_bits(64);
+        ASSERT_EQ(window >> (64 - pairs[i].width), pairs[i].value) << "pair " << i;
+        r.skip_bits(pairs[i].width);
     }
-    EXPECT_EQ(mismatches, 0);
-    EXPECT_TRUE(r.ok());
+    EXPECT_TRUE(r.ok()) << "a 64-bit peek overhanging the end must not flag overrun";
 }
 
 TEST_F(BitIoRoundTripTest, PeekNeverAdvancesTheReader) {
     BitReader r(buf);
-    int advances = 0;
-    for (const Pair& p : pairs) {
-        uint64_t before = r.bits_read();
-        r.peek_bits(p.width);
-        r.peek_bits(64);
-        if (r.bits_read() != before) ++advances;
-        r.read_bits(p.width);
+    for (int i = 0; i < N; i += 97) {
+        while (r.bits_read() < starts[i]) {
+            const uint64_t gap = starts[i] - r.bits_read();
+            r.skip_bits(gap > 64 ? 64 : static_cast<int>(gap));
+        }
+        const uint64_t before = r.bits_read();
+        for (int k = 0; k < 5; ++k) r.peek_bits(pairs[i].width);
+        ASSERT_EQ(r.bits_read(), before);
+        ASSERT_EQ(r.read_bits(pairs[i].width), pairs[i].value);
     }
-    EXPECT_EQ(advances, 0);
 }
 
-TEST_F(BitIoRoundTripTest, ReaderConsumesExactlyWhatTheWriterProducedAndPadIsUntouched) {
+TEST_F(BitIoRoundTripTest, ReaderConsumesExactlyWhatTheWriterProducedAndPadIsZero) {
     BitReader r(buf);
-    for (const Pair& p : pairs) r.read_bits(p.width);
-
+    for (const Pair& p : pairs) r.skip_bits(p.width);
     EXPECT_EQ(r.bits_read(), total_bits);
-    EXPECT_TRUE(r.ok()) << "the trailing pad bits must never be needed";
-
-    // The framing decision in practice: the header would carry N, the decoder
-    // stops after N symbols, and the leftover pad bits are reachable but irrelevant.
-    EXPECT_EQ(r.bits_remaining(), buf.size() * 8 - total_bits);
-    EXPECT_LT(r.bits_remaining(), 8u);
+    EXPECT_EQ(r.bits_remaining(), (8 - total_bits % 8) % 8);
+    EXPECT_EQ(r.read_bits(static_cast<int>(r.bits_remaining())), 0u) << "padding must be zero";
+    EXPECT_TRUE(r.exhausted());
+    EXPECT_TRUE(r.ok());
 }
 
 TEST_F(BitIoRoundTripTest, BitByBitReadRebuildsTheSameValues) {
     BitReader r(buf);
-    int mismatches = 0;
-    for (int i = 0; i < 2000; ++i) {   // a prefix is plenty; this path is slow
-        const Pair& p = pairs[i];
+    for (int i = 0; i < N; i += 7) {
+        while (r.bits_read() < starts[i]) {
+            const uint64_t gap = starts[i] - r.bits_read();
+            r.skip_bits(gap > 64 ? 64 : static_cast<int>(gap));
+        }
         uint64_t v = 0;
-        for (int b = 0; b < p.width; ++b) v = (v << 1) | (r.read_bit() ? 1u : 0u);
-        if (v != p.value) ++mismatches;
+        for (int b = 0; b < pairs[i].width; ++b) v = (v << 1) | (r.read_bit() ? 1 : 0);
+        ASSERT_EQ(v, pairs[i].value) << "pair " << i;
     }
-    EXPECT_EQ(mismatches, 0);
 }
 
-// ---------------------------------------------------------------------------
-// Edge cases around the seams.
-// ---------------------------------------------------------------------------
+TEST_F(BitIoRoundTripTest, ReadingOneBitTooManyAtTheEndOverruns) {
+    BitReader r(buf);
+    while (!r.exhausted()) r.skip_bits(r.bits_remaining() > 64 ? 64 : static_cast<int>(r.bits_remaining()));
+    EXPECT_TRUE(r.ok());
+    r.read_bit();
+    EXPECT_TRUE(r.overrun());
+}
+
+// ===========================================================================
+// Edge cases
+// ===========================================================================
 TEST(BitIoEdgeTest, EmptyStream) {
     Bytes buf;
-    { BitWriter w(buf); }
+    {
+        BitWriter w(buf);
+        EXPECT_EQ(w.bits_written(), 0u);
+    }
+    EXPECT_TRUE(buf.empty());
     BitReader r(buf);
     EXPECT_TRUE(r.exhausted());
+    EXPECT_EQ(r.peek_bits(15), 0u);
     EXPECT_TRUE(r.ok());
-    EXPECT_EQ(r.peek_bits(64), 0u);
-    EXPECT_TRUE(r.ok()) << "peek on an empty stream stays clean";
-    r.read_bits(1);
-    EXPECT_FALSE(r.ok()) << "reading an empty stream sets the overrun flag";
 }
 
 TEST(BitIoEdgeTest, ThreeBitsAreLeftAlignedAndPadIsZero) {
     Bytes buf;
-    { BitWriter w(buf); w.write_bits(0b101, 3); }
-    EXPECT_EQ(buf, Bytes{0xA0});
-
+    {
+        BitWriter w(buf);
+        w.write_bits(0b101, 3);
+    }
+    ASSERT_EQ(buf, (Bytes{0xA0}));
     BitReader r(buf);
     EXPECT_EQ(r.read_bits(3), 0b101u);
-    EXPECT_EQ(r.bits_remaining(), 5u);
     EXPECT_EQ(r.read_bits(5), 0u);
     EXPECT_TRUE(r.ok());
 }
 
-TEST(BitIoEdgeTest, FullSixtyFourBitValue) {
-    Bytes buf;
-    { BitWriter w(buf); w.write_bits(0xDEADBEEFCAFEBABEull, 64); }
-    BitReader r(buf);
-    EXPECT_EQ(r.read_bits(64), 0xDEADBEEFCAFEBABEull);
-    EXPECT_TRUE(r.ok());
+TEST(BitIoEdgeTest, FullSixtyFourBitValues) {
+    for (uint64_t v : {0ull, 1ull, ~0ull, 0x8000000000000000ull, 0x0123456789ABCDEFull, 0xAAAAAAAAAAAAAAAAull}) {
+        Bytes buf;
+        {
+            BitWriter w(buf);
+            w.write_bits(v, 64);
+        }
+        BitReader r(buf);
+        EXPECT_EQ(r.read_bits(64), v);
+        EXPECT_TRUE(r.exhausted());
+    }
 }
 
 TEST(BitIoEdgeTest, WidthZeroWritesAndReadsNothing) {
     Bytes buf;
-    { BitWriter w(buf); w.write_bits(0xFF, 0); w.write_bit(true); }
-    EXPECT_EQ(buf, Bytes{0x80});
-
+    {
+        BitWriter w(buf);
+        w.write_bits(~0ull, 0);
+        w.write_bits(0b1, 1);
+        w.write_bits(~0ull, 0);
+    }
     BitReader r(buf);
     EXPECT_EQ(r.read_bits(0), 0u);
-    EXPECT_EQ(r.bits_read(), 0u);
-    EXPECT_TRUE(r.read_bit());
+    EXPECT_EQ(r.read_bits(1), 1u);
+    EXPECT_EQ(r.read_bits(0), 0u);
+    EXPECT_EQ(r.bits_read(), 1u);
 }
 
 TEST(BitIoEdgeTest, ClampedWidthsAgreeOnBothSides) {
     Bytes buf;
-    { BitWriter w(buf); w.write_bits(0x0123456789ABCDEFull, 99); w.write_bits(0b11, 2); }
+    {
+        BitWriter w(buf);
+        w.write_bits(0xFEDCBA9876543210ull, 100);   // written as 64
+        w.write_bits(0x5, -3);                      // nothing
+        w.write_bits(0x5, 3);
+    }
     BitReader r(buf);
-    EXPECT_EQ(r.read_bits(99), 0x0123456789ABCDEFull);
-    EXPECT_EQ(r.read_bits(2), 0b11u);
+    EXPECT_EQ(r.read_bits(100), 0xFEDCBA9876543210ull);
+    EXPECT_EQ(r.read_bits(-3), 0u);
+    EXPECT_EQ(r.read_bits(3), 0x5u);
     EXPECT_TRUE(r.ok());
 }
 
 TEST(BitIoEdgeTest, SkipJumpsAWholeSymbol) {
     Bytes buf;
-    { BitWriter w(buf); w.write_bits(0xAB, 8); w.write_bits(0xCD, 8); }
+    {
+        BitWriter w(buf);
+        w.write_bits(0x1234, 13);
+        w.write_bits(0x2A, 6);
+    }
     BitReader r(buf);
-    r.skip_bits(8);
-    EXPECT_EQ(r.read_bits(8), 0xCDu);
+    r.skip_bits(13);
+    EXPECT_EQ(r.read_bits(6), 0x2Au);
 }
 
 TEST(BitIoEdgeTest, MidStreamFlushIsMirroredByAlignToByte) {
     Bytes buf;
     {
         BitWriter w(buf);
-        w.write_bits(0b111, 3);
-        w.flush();                  // writer pads to the byte boundary
-        w.write_bits(0xAA, 8);
+        w.write_bits(0b11, 2);
+        w.flush();
+        w.write_bits(0x7F, 7);
+        w.flush();
+        w.write_bits(0x1, 1);
     }
+    ASSERT_EQ(buf, (Bytes{0xC0, 0xFE, 0x80}));
     BitReader r(buf);
-    EXPECT_EQ(r.read_bits(3), 0b111u);
+    EXPECT_EQ(r.read_bits(2), 0b11u);
     r.align_to_byte();
-    EXPECT_EQ(r.read_bits(8), 0xAAu);
+    EXPECT_EQ(r.read_bits(7), 0x7Fu);
     r.align_to_byte();
-    EXPECT_EQ(r.bits_read(), 16u) << "align_to_byte is a no-op when already aligned";
-}
-
-TEST(BitIoEdgeTest, ManyFlushAlignSegments) {
-    std::mt19937 rng(7);
-    std::vector<std::vector<Pair>> segments(200);
-
-    Bytes buf;
-    {
-        BitWriter w(buf);
-        for (auto& seg : segments) {
-            int count = static_cast<int>(rng() % 6);   // empty segments included
-            for (int i = 0; i < count; ++i) {
-                int width = static_cast<int>(rng() % 20) + 1;
-                uint64_t raw = (static_cast<uint64_t>(rng()) << 32) | rng();
-                seg.push_back({raw, mask_to(raw, width), width});
-                w.write_bits(raw, width);
-            }
-            w.flush();
-            EXPECT_EQ(w.bits_pending(), 0);
-        }
-    }
-
-    BitReader r(buf);
-    for (std::size_t s = 0; s < segments.size(); ++s) {
-        for (const Pair& p : segments[s]) {
-            ASSERT_EQ(r.read_bits(p.width), p.value) << "segment " << s;
-        }
-        r.align_to_byte();
-    }
-    EXPECT_TRUE(r.ok());
+    EXPECT_EQ(r.read_bits(1), 1u);
+    r.align_to_byte();
     EXPECT_TRUE(r.exhausted());
-}
-
-TEST(BitIoEdgeTest, OverLongReadZeroFillsAndFlags) {
-    Bytes buf;
-    { BitWriter w(buf); w.write_bits(0b1011, 4); }   // 4 real bits + 4 pad
-    BitReader r(buf);
-    EXPECT_EQ(r.read_bits(16), 0b10110000ull << 8);
-    EXPECT_FALSE(r.ok());
-}
-
-TEST(BitIoEdgeTest, PeekPastTheEndDoesNotFlagOverrun) {
-    // The table decoder depends on this.
-    Bytes buf;
-    { BitWriter w(buf); w.write_bits(0b1, 1); }
-    BitReader r(buf);
-    EXPECT_EQ(r.peek_bits(64), 0b10000000ull << 56);
-    EXPECT_TRUE(r.ok());
-    EXPECT_EQ(r.peek_bits(64), r.peek_bits(64));
     EXPECT_TRUE(r.ok());
 }
 
 TEST(BitIoEdgeTest, WriterAndReaderCountersAgreeAtEverySymbolBoundary) {
-    std::mt19937_64 rng(99);
-    std::vector<Pair> pairs;
-    std::vector<uint64_t> boundaries;
-
+    std::mt19937_64 rng(11);
+    const std::vector<Pair> pairs = randomPairs(rng, 2000);
+    std::vector<uint64_t> writerCounts;
     Bytes buf;
     {
         BitWriter w(buf);
-        for (int i = 0; i < 1000; ++i) {
-            int width = static_cast<int>(rng() % 64) + 1;
-            uint64_t raw = rng();
-            pairs.push_back({raw, mask_to(raw, width), width});
-            w.write_bits(raw, width);
-            boundaries.push_back(w.bits_written());
+        for (const Pair& p : pairs) {
+            writerCounts.push_back(w.bits_written());
+            w.write_bits(p.raw, p.width);
         }
     }
-
     BitReader r(buf);
     for (std::size_t i = 0; i < pairs.size(); ++i) {
-        r.read_bits(pairs[i].width);
-        ASSERT_EQ(r.bits_read(), boundaries[i]) << "symbol " << i;
+        ASSERT_EQ(r.bits_read(), writerCounts[i]) << "symbol " << i;
+        ASSERT_EQ(r.read_bits(pairs[i].width), pairs[i].value);
     }
 }
 
-// ---------------------------------------------------------------------------
-// Every width 1..64 with structured and random values.
-// ---------------------------------------------------------------------------
+TEST(BitIoEdgeTest, HuffmanSizedCodesOfOneToFifteenBits) {
+    // The widths a canonical code really uses, 300,000 of them.
+    std::mt19937_64 rng(12);
+    const std::vector<Pair> pairs = randomPairs(rng, 300000, 1, 15);
+    Bytes buf;
+    {
+        BitWriter w(buf);
+        for (const Pair& p : pairs) w.write_bits(p.value, p.width);
+    }
+    BitReader r(buf);
+    for (std::size_t i = 0; i < pairs.size(); ++i) {
+        const uint64_t window = r.peek_bits(15);
+        ASSERT_EQ(window >> (15 - pairs[i].width), pairs[i].value) << "symbol " << i;
+        r.skip_bits(pairs[i].width);
+    }
+    EXPECT_TRUE(r.ok());
+}
+
+// ===========================================================================
+// Every width 1..64: structured and random values back to back
+// ===========================================================================
 class BitIoWidthTest : public ::testing::TestWithParam<int> {};
 
 TEST_P(BitIoWidthTest, StructuredAndRandomValuesRoundTrip) {
     const int width = GetParam();
-    std::mt19937_64 rng(1000 + width);
-
     std::vector<uint64_t> values = {
-        0, ~0ull, 0xAAAAAAAAAAAAAAAAull, 0x5555555555555555ull, 1, 1ull << (width - 1),
+        0, 1, maskTo(~0ull, width), 1ull << (width - 1),
+        maskTo(0xAAAAAAAAAAAAAAAAull, width), maskTo(0x5555555555555555ull, width),
+        maskTo(0x0123456789ABCDEFull, width),
     };
-    for (int i = 0; i < 100; ++i) values.push_back(rng());
+    std::mt19937_64 rng(300 + width);
+    for (int i = 0; i < 1000; ++i) values.push_back(maskTo(rng(), width));
 
     Bytes buf;
-    uint64_t written = 0;
     {
         BitWriter w(buf);
         for (uint64_t v : values) w.write_bits(v, width);
-        written = w.bits_written();
     }
-    const uint64_t total = static_cast<uint64_t>(width) * values.size();
-    ASSERT_EQ(written, total);
-    ASSERT_EQ(buf.size(), (total + 7) / 8);
-
+    EXPECT_EQ(buf.size(), (values.size() * width + 7) / 8);
     BitReader r(buf);
-    for (std::size_t i = 0; i < values.size(); ++i) {
-        EXPECT_EQ(r.peek_bits(width), mask_to(values[i], width)) << "value " << i;
-        EXPECT_EQ(r.read_bits(width), mask_to(values[i], width)) << "value " << i;
-    }
-    EXPECT_TRUE(r.ok());
-    EXPECT_EQ(r.bits_remaining(), buf.size() * 8 - total);
-    EXPECT_EQ(r.read_bits(static_cast<int>(r.bits_remaining())), 0u) << "pad bits are zero";
+    for (std::size_t i = 0; i < values.size(); ++i) ASSERT_EQ(r.read_bits(width), values[i]) << "value " << i;
     EXPECT_TRUE(r.ok());
 }
 
-TEST_P(BitIoWidthTest, ValueFollowedByMarkerBitStaysAligned) {
-    // A single stray or missing bit anywhere would shift every marker.
+TEST_P(BitIoWidthTest, ValueFollowedByAMarkerBitStaysAligned) {
     const int width = GetParam();
-    std::mt19937_64 rng(2000 + width);
+    std::mt19937_64 rng(400 + width);
     std::vector<uint64_t> values;
-    for (int i = 0; i < 50; ++i) values.push_back(rng());
-
     Bytes buf;
     {
         BitWriter w(buf);
-        for (std::size_t i = 0; i < values.size(); ++i) {
-            w.write_bits(values[i], width);
-            w.write_bit(i % 2 == 0);
+        for (int i = 0; i < 300; ++i) {
+            values.push_back(maskTo(rng(), width));
+            w.write_bits(values.back(), width);
+            w.write_bit(true);
         }
     }
-
     BitReader r(buf);
     for (std::size_t i = 0; i < values.size(); ++i) {
-        ASSERT_EQ(r.read_bits(width), mask_to(values[i], width)) << "value " << i;
-        ASSERT_EQ(r.read_bit(), i % 2 == 0) << "marker " << i;
+        ASSERT_EQ(r.read_bits(width), values[i]) << i;
+        ASSERT_TRUE(r.read_bit()) << "marker after value " << i;
     }
+}
+
+TEST_P(BitIoWidthTest, ByteAlignedSegmentsWithFlushAndAlign) {
+    const int width = GetParam();
+    std::mt19937_64 rng(500 + width);
+    std::vector<uint64_t> values;
+    Bytes buf;
+    {
+        BitWriter w(buf);
+        for (int i = 0; i < 200; ++i) {
+            values.push_back(maskTo(rng(), width));
+            w.write_bits(values.back(), width);
+            w.flush();
+        }
+    }
+    EXPECT_EQ(buf.size(), values.size() * ((width + 7) / 8));
+    BitReader r(buf);
+    for (std::size_t i = 0; i < values.size(); ++i) {
+        ASSERT_EQ(r.read_bits(width), values[i]) << i;
+        r.align_to_byte();
+    }
+    EXPECT_TRUE(r.exhausted());
     EXPECT_TRUE(r.ok());
 }
 
 INSTANTIATE_TEST_SUITE_P(AllWidths, BitIoWidthTest, ::testing::Range(1, 65));
+
+// ===========================================================================
+// Random streams: 150 seeds, each a random mix of bits, words and flushes
+// ===========================================================================
+class BitIoRandomStreamTest : public ::testing::TestWithParam<int> {};
+
+TEST_P(BitIoRandomStreamTest, MixedOperationsReadBackInTheSameOrder) {
+    std::mt19937_64 rng(static_cast<uint64_t>(GetParam()) * 31337 + 9);
+
+    enum Kind { Bit, Word, Flush };
+    struct Op { Kind kind; uint64_t value; int width; };
+    std::vector<Op> ops;
+
+    Bytes buf;
+    uint64_t expectedBits = 0;
+    {
+        BitWriter w(buf);
+        const int n = 200 + static_cast<int>(rng() % 800);
+        for (int i = 0; i < n; ++i) {
+            const int pick = static_cast<int>(rng() % 10);
+            if (pick < 3) {
+                const bool b = (rng() & 1) != 0;
+                w.write_bit(b);
+                ops.push_back({Bit, b ? 1u : 0u, 1});
+                ++expectedBits;
+            } else if (pick < 9) {
+                const int width = 1 + static_cast<int>(rng() % 64);
+                const uint64_t raw = rng();
+                w.write_bits(raw, width);
+                ops.push_back({Word, maskTo(raw, width), width});
+                expectedBits += width;
+            } else {
+                w.flush();
+                ops.push_back({Flush, 0, 0});
+            }
+        }
+        ASSERT_EQ(w.bits_written(), expectedBits);
+    }
+
+    BitReader r(buf);
+    for (std::size_t i = 0; i < ops.size(); ++i) {
+        switch (ops[i].kind) {
+            case Bit:   ASSERT_EQ(r.read_bit() ? 1u : 0u, ops[i].value) << "op " << i; break;
+            case Word:  ASSERT_EQ(r.read_bits(ops[i].width), ops[i].value) << "op " << i; break;
+            case Flush: r.align_to_byte(); break;
+        }
+    }
+    r.align_to_byte();
+    EXPECT_TRUE(r.exhausted());
+    EXPECT_TRUE(r.ok());
+}
+
+INSTANTIATE_TEST_SUITE_P(Seeds, BitIoRandomStreamTest, ::testing::Range(0, 150));
