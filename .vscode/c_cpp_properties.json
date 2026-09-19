@@ -1,0 +1,18 @@
+{
+    "configurations": [
+        {
+            "name": "Mac",
+            "compilerPath": "/usr/bin/g++",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "macos-clang-arm64",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "/opt/homebrew/include"
+            ],
+            "defines": [
+                "GTEST_HAS_PTHREAD=1"
+            ]
+        }
+    ],
+    "version": 4
+}

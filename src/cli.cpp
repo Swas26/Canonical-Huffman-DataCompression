@@ -38,7 +38,7 @@ namespace {
         "\n"
         "options                                                             for\n"
         "  -o FILE      output name, one input only; - is stdout             c d\n"
-        "  -c           write to stdout, compress takes one input with it    c d\n"
+        "  -c           write to stdout                                      c d\n"
         "  -f           overwrite outputs, compress .swas files again,       c d\n"
         "               allow archives to or from a terminal\n"
         "  --rm         delete each input once its output is written         c d\n"
