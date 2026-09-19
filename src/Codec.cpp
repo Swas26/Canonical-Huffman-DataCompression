@@ -60,7 +60,7 @@ DecodeTable buildDecodeTable(const hf::CodeLengths& lengths){
 
     /* populating the fast table*/
     for(int l = 1; l <= FAST_BITS; ++l){
-        const uint32_t span = 1u << (FAST_BITS - 1);
+        const uint32_t span = 1u << (FAST_BITS - l);
 
         for (uint32_t i = 0; i < t.count[l]; ++i){
             const Entry e{ t.sorted[t.firstIndex[l] + i], static_cast<uint8_t>(l)};

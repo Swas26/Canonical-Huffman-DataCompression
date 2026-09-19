@@ -1,5 +1,5 @@
-#include "BitWriter.hpp"
+#include "cli.hpp"
 
-int main() {
-    return 0;
+int main(int argc, char** argv) {
+    return cli::run(argc, argv);
 }

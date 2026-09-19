@@ -193,6 +193,10 @@ bool hf::lengthsAreValid(const hf::CodeLengths& len){
     return (kraft <= 1u << (MAX_CODE_LEN));
 }
 
+int hf::maxLength(const hf::CodeLengths& len){
+    return *std::max_element(len.begin(), len.end());
+}
+
 /* truning lengtsh into actual code.. */
 bool hf::buildCanonicalCodes(const hf::CodeLengths& len, hf::CodeTable& codes){
     if (!lengthsAreValid(len)) return {};
