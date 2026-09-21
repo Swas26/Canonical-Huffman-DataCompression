@@ -4,8 +4,8 @@
 // The fixture writes 50,000 random (value, width) pairs once and checks one
 // property per test. The parameterized suites repeat the round trip for every
 // width, for random flush/align segmentations and for mixed bit/word writes.
-#include "BitReader.hpp"
-#include "BitWriter.hpp"
+#include "core/BitReader.hpp"
+#include "core/BitWriter.hpp"
 #include "test_support.hpp"
 
 #include <gtest/gtest.h>

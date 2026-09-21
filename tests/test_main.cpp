@@ -5,8 +5,8 @@
 // stdin/stdout plumbing and the argv hand-off in main.cpp are checked as a
 // user sees them. The binary is ./swas (make test builds it first) or $SWAS_BIN;
 // the suite is skipped when neither exists.
-#include "Codec.hpp"
-#include "Format.hpp"
+#include "core/Codec.hpp"
+#include "core/Format.hpp"
 #include "test_support.hpp"
 
 #include <gtest/gtest.h>

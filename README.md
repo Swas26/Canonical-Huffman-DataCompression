@@ -19,13 +19,14 @@ brew install googletest pkg-config   # tests only
 
 make          # builds ./swas and the test binaries
 make test     # builds everything and runs every test suite
+make bench    # runs ./swas bench on tests/data/big.txt
 make clean
 ```
 
 The Makefile builds a debug binary (`-g`, no optimisation). An optimised build runs 1.6–2.5× faster in `bench`:
 
 ```sh
-make clean && make swas CXXFLAGS="-std=c++17 -O2 -Wall -Wextra"
+make release  # clean, then build ./swas with -O2; make clean goes back to debug
 ```
 
 ## Usage
@@ -183,20 +184,29 @@ To run one binary, or a subset of its tests:
 ./build/bin/test_codec --gtest_filter='*Corruption*'
 ```
 
+`tests/data/big.txt` is a 6.5 MB English text sample (Peter Norvig's big.txt corpus) for benchmarking with `make bench`. No test depends on it.
+
 ## Project layout
 
 ```
 src/
-  BitWriter.{hpp,cpp}   MSB-first bit packing into a byte vector
-  BitReader.{hpp,cpp}   the mirror image: read, peek, skip, align, overrun flag
-  Huffman.{hpp,cpp}     frequencies, code lengths, 15-bit limiting, canonical codes
-  Format.{hpp,cpp}      the 273-byte header and CRC-32
-  Codec.{hpp,cpp}       encode, both decoders, status messages
-  cli.{hpp,cpp}         argument parsing and the five commands
-  main.cpp              calls cli::run
-tests/                  one test file per source file, plus test_support.hpp
-Learned.md              notes on the theory behind the design
+  main.cpp                calls cli::run
+  core/                   the compressor itself
+    BitWriter.{hpp,cpp}   MSB-first bit packing into a byte vector
+    BitReader.{hpp,cpp}   the mirror image: read, peek, skip, align, overrun flag
+    Huffman.{hpp,cpp}     frequencies, code lengths, 15-bit limiting, canonical codes
+    Format.{hpp,cpp}      the 273-byte header and CRC-32
+    Codec.{hpp,cpp}       encode, both decoders, status messages
+  cli/
+    Cli.{hpp,cpp}         argument parsing and the five commands
+tests/                    one test file per source file, plus test_support.hpp
+  data/big.txt            sample text for benchmarking
+docs/
+  Learned.md              notes on the theory behind the design
+  AI_log.md               log of the AI prompts used while building it
 ```
+
+Headers are included by their path under `src/`, e.g. `#include "core/Codec.hpp"`.
 
 ## Limitations
 

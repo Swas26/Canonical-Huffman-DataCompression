@@ -1,4 +1,4 @@
-#include "BitWriter.hpp"
+#include "core/BitWriter.hpp"
 
 BitWriter::BitWriter(std::vector<uint8_t>& dest_buffer)
     : buffer(dest_buffer), bits_total(0), current_byte(0), bit_count(0) {}

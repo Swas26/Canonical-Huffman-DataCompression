@@ -1,8 +1,8 @@
-#include "cli.hpp"
+#include "cli/Cli.hpp"
 
-#include "Codec.hpp"
-#include "Format.hpp"
-#include "Huffman.hpp"
+#include "core/Codec.hpp"
+#include "core/Format.hpp"
+#include "core/Huffman.hpp"
 
 #include <algorithm>
 #include <cerrno>

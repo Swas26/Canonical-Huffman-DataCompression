@@ -1,10 +1,14 @@
+# macOS
 .DS_Store
+
+# editor
+.vscode/
+
+# build output
 build/
-build/
-*.o
-*.d
-swas
-run_tests
+/swas
+
+# archives made while trying the tool
+*.swas
+
 claude/
-.txt
-.swas

@@ -1,4 +1,4 @@
-#include "BitReader.hpp"
+#include "core/BitReader.hpp"
 
 BitReader::BitReader(const uint8_t* data, std::size_t size)
     : buffer(data),

@@ -8,10 +8,10 @@
 // suites cut every archive at every length and flip every bit of it: decode
 // must never report Ok with the wrong bytes, and the table and bit-by-bit
 // decoders must always return the same status and output.
-#include "BitWriter.hpp"
-#include "Codec.hpp"
-#include "Format.hpp"
-#include "Huffman.hpp"
+#include "core/BitWriter.hpp"
+#include "core/Codec.hpp"
+#include "core/Format.hpp"
+#include "core/Huffman.hpp"
 #include "test_support.hpp"
 
 #include <gtest/gtest.h>

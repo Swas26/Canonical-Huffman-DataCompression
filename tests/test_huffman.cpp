@@ -6,9 +6,9 @@
 // properties any correct build must have: optimal cost against an independent
 // min-heap Huffman, a complete Kraft sum, the 15-bit cap, order preservation
 // in the limiter, and codes that follow the canonical rule exactly.
-#include "BitReader.hpp"
-#include "BitWriter.hpp"
-#include "Huffman.hpp"
+#include "core/BitReader.hpp"
+#include "core/BitWriter.hpp"
+#include "core/Huffman.hpp"
 #include "test_support.hpp"
 
 #include <gtest/gtest.h>

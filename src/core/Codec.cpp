@@ -1,8 +1,8 @@
-#include "Codec.hpp"
-#include "BitReader.hpp"
-#include "BitWriter.hpp"
-#include "Huffman.hpp"
-#include "Format.hpp"
+#include "core/Codec.hpp"
+#include "core/BitReader.hpp"
+#include "core/BitWriter.hpp"
+#include "core/Huffman.hpp"
+#include "core/Format.hpp"
 
 namespace /* helpers, kinda like static */
 {

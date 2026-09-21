@@ -7,8 +7,8 @@
 // leave the caller's header untouched. crc32 is checked against zlib's
 // published values, a bitwise reference, and the error-detection guarantees
 // CRC-32 makes (every 1- and 2-bit error, every burst up to 32 bits).
-#include "Format.hpp"
-#include "Huffman.hpp"
+#include "core/Format.hpp"
+#include "core/Huffman.hpp"
 #include "test_support.hpp"
 
 #include <gtest/gtest.h>

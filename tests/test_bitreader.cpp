@@ -4,7 +4,7 @@
 // skip, align, the sticky overrun flag and every counter. The model suite runs
 // random operation sequences against a list-of-bits reference reader and
 // compares every return value and counter after each step.
-#include "BitReader.hpp"
+#include "core/BitReader.hpp"
 #include "test_support.hpp"
 
 #include <gtest/gtest.h>

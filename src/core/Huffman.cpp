@@ -1,4 +1,4 @@
-#include "Huffman.hpp"
+#include "core/Huffman.hpp"
 #include <algorithm>
 
 hf::FrequencyTable hf::countFrequencies(const uint8_t* data, std::size_t size){

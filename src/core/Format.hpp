@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "Huffman.hpp"
+#include "core/Huffman.hpp"
 
 /* formats job is to turn a struct into bytes and vice versa*/
 

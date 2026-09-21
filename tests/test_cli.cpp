@@ -8,9 +8,9 @@
 // stdout and stderr redirected to files (and to a pseudo-terminal for the
 // "is a terminal" refusals): every command, the messages, exit codes, file
 // modes, --rm, -f, and that no temp file is ever left behind.
-#include "Codec.hpp"
-#include "Format.hpp"
-#include "cli.hpp"
+#include "core/Codec.hpp"
+#include "core/Format.hpp"
+#include "cli/Cli.hpp"
 #include "test_support.hpp"
 
 #include <gtest/gtest.h>

@@ -4,7 +4,7 @@
 // Hand-written cases pin exact bytes; the parameterized suites sweep every
 // width at every bit offset; the model suite replays thousands of random
 // operations against a plain list-of-bits model and compares after each one.
-#include "BitWriter.hpp"
+#include "core/BitWriter.hpp"
 #include "test_support.hpp"
 
 #include <gtest/gtest.h>

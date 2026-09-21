@@ -1,5 +1,6 @@
 CXX      = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -g
+RELEASE_FLAGS = -std=c++17 -O2 -Wall -Wextra
 DEPFLAGS = -MMD -MP
 INCLUDES = -Isrc
 
@@ -11,7 +12,7 @@ SRC_DIR   = src
 TEST_DIR  = tests
 BUILD_DIR = build
 
-SRC_FILES  = $(wildcard $(SRC_DIR)/*.cpp)
+SRC_FILES  = $(wildcard $(SRC_DIR)/*.cpp $(SRC_DIR)/*/*.cpp)
 TEST_FILES = $(wildcard $(TEST_DIR)/*.cpp)
 
 SRC_OBJS  = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(SRC_FILES))
@@ -50,12 +51,20 @@ test: $(MAIN_TARGET) $(TEST_BINS)
 	if [ $$fail -ne 0 ]; then echo "SOME TESTS FAILED"; fi; \
 	exit $$fail
 
+# Optimised ./swas only. The objects are rebuilt with -O2; `make clean` goes back to debug.
+release: clean
+	$(MAKE) $(MAIN_TARGET) CXXFLAGS="$(RELEASE_FLAGS)"
+
+# Encode/decode timings and a round-trip check on the sample corpus.
+bench: $(MAIN_TARGET)
+	./$(MAIN_TARGET) b tests/data/big.txt
+
 clean:
 	rm -rf $(BUILD_DIR) $(MAIN_TARGET)
 
 -include $(SRC_OBJS:.o=.d) $(TEST_OBJS:.o=.d)
 
-.PHONY: all test clean
+.PHONY: all test release bench clean
 
 # Keep object files; without this make treats them as intermediates and deletes them.
 .SECONDARY:
