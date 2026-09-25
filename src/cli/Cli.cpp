@@ -618,7 +618,15 @@ namespace {
                     cli::humanSize(archive.size()).c_str(), percent(archive.size(), data.size()).c_str());
         std::printf("  %-18s  %9.3f bits/byte\n", "entropy", entropy);
         if (raw) std::printf("  %-18s  stored raw, codes would not have beaten the input\n", "huffman");
-        else std::printf("  %-18s  %9.3f bits/byte, %.3f over the entropy\n", "huffman", bits / n, bits / n - entropy);
+        else{
+            std::printf("  %-18s  %9.3f bits/byte, %.3f over the entropy\n", "huffman", bits / n, bits / n - entropy);
+            const auto uncapped = hf::buildCodeLengths(freq);
+            uint64_t uncappedBits = 0;
+            for (int s = 0; s < 256; ++s) uncappedBits += freq[s] * uncapped[s];
+            std::printf("  %-18s  %9d bits deep, cap costs %llu bytes\n", "uncapped tree",
+                        hf::maxLength(uncapped),
+                        static_cast<unsigned long long>((bits - uncappedBits + 7) / 8));
+        }
         std::printf("  %-18s  %9.3f ms  %8.1f MB/s\n", "encode", encode * 1e3, rate(encode));
         std::printf("  %-18s  %9.3f ms  %8.1f MB/s\n", "decode, table", decTable * 1e3, rate(decTable));
         std::printf("  %-18s  %9.3f ms  %8.1f MB/s", "decode, bit by bit", decBit * 1e3, rate(decBit));
