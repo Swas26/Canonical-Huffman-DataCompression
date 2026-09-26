@@ -258,11 +258,11 @@ cd::Status cd::decode(const std::vector<uint8_t>& in, std::vector<uint8_t>& out,
 const char* cd::messge(cd::Status s){
     switch (s){
         case cd::Status::Ok: return "ok";
-        case cd::Status::BadHeader: return "not an archive file or t header is corrupt";
+        case cd::Status::BadHeader: return "not an archive, or its header is corrupt";
         case cd::Status::BadLength: return "stored length does not match the payload";
         case cd::Status::BadCode: return "payload contains a bit sequence that is not a code";
         case cd::Status::Truncated: return "payload ends before the last symbol";
-        case cd::Status::BadChecksum: return "checksum dosent match, decoded data is corrupt";
+        case cd::Status::BadChecksum: return "checksum does not match, decoded data is corrupt";
     }
     return "we dont know what happened :)";
 }

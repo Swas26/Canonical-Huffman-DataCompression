@@ -6,9 +6,10 @@
 
 # build output
 build/
-/swas
+/scomp
 
 # archives made while trying the tool
 *.swas
 
 claude/
+/bench/

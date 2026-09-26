@@ -187,7 +187,7 @@ inline std::string readText(const fs::path& p) {
 class TempDir {
 public:
     TempDir() {
-        std::string tmpl = (fs::temp_directory_path() / "swas-test-XXXXXX").string();
+        std::string tmpl = (fs::temp_directory_path() / "scomp-test-XXXXXX").string();
         if (::mkdtemp(tmpl.data()) != nullptr) dir = tmpl;
     }
     ~TempDir() {

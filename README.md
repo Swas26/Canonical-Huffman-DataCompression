@@ -1,9 +1,9 @@
-# swas
+# S_comp
 
 A file compressor written in C++17. It uses canonical Huffman coding with code lengths capped at 15 bits. The decoder itself is table-driven w/ Crc32 checks at every archive, and any files that Huffman can't compress are stored raw instead.
 
 ```
-$ ./swas c Learned.md cli.cpp random.bin
+$ ./scomp c Learned.md cli.cpp random.bin
 Learned.md -> Learned.md.swas  5.3 KB -> 3.4 KB  63.9%  0.5 ms
 cli.cpp -> cli.cpp.swas  27.2 KB -> 15.7 KB  57.6%  0.8 ms
 random.bin -> random.bin.swas  200.0 KB -> 200.3 KB  100.1%  0.9 ms  (stored raw)
@@ -17,22 +17,22 @@ Requirmentrs are C++17 compiler, `make` and GoogleTest for the tests and `pkg-co
 ```sh
 brew install googletest pkg-config   # tests only
 
-make          # builds ./swas and the test binaries
+make          # builds ./scomp and the test binaries
 make test     # builds everything and runs every test suite
-make bench    # runs ./swas bench on tests/data/big.txt
+make bench    # runs ./scomp bench on tests/data/big.txt
 make clean
 ```
 
 The Makefile builds a debug binary (`-g`, no optimisation). An optimised build runs 1.6–2.5× faster in `bench`:
 
 ```sh
-make release  # clean, then build ./swas with -O2; make clean goes back to debug
+make release  # clean, then build ./scomp with -O2; make clean goes back to debug
 ```
 
 ## Usage
 
 ```
-usage: swas <command> [options] [file...]
+usage: scomp <command> [options] [file...]
 
 commands
   compress, c      file -> file.swas
@@ -60,18 +60,18 @@ Exit status: 0 ok, 1 a file failed, 2 bad usage.
 Some examples:
 
 ```sh
-./swas c report.txt               # -> report.txt.swas, report.txt is kept
-./swas d report.txt.swas          # -> report.txt (refuses if it exists; -f overwrites)
-./swas c --rm *.log               # compress each log, delete the originals
-./swas d -o copy.txt report.txt.swas
-cat big.csv | ./swas c | ./swas d > same.csv
-./swas t *.swas                   # verify archives without writing anything
+./scomp c report.txt               # -> report.txt.swas, report.txt is kept
+./scomp d report.txt.swas          # -> report.txt (refuses if it exists; -f overwrites)
+./scomp c --rm *.log               # compress each log, delete the originals
+./scomp d -o copy.txt report.txt.swas
+cat big.csv | ./scomp c | ./scomp d > same.csv
+./scomp t *.swas                   # verify archives without writing anything
 ```
 
 `info` reads only the header. With `--codes` it also lists every symbol's canonical code:
 
 ```
-$ ./swas i --codes abra.txt.swas
+$ ./scomp i --codes abra.txt.swas
 abra.txt.swas
   format    huffman
   original  11 B (11 bytes)
@@ -96,7 +96,7 @@ abra.txt.swas
 `bench` compares Huffman against the entropy of the byte counts, times each step and checks that both decoders reproduce the input. Timings depend on the build and the machine; these are from the default debug build:
 
 ```
-$ ./swas b -n 5 cli.cpp
+$ ./scomp b -n 5 cli.cpp
 cli.cpp  27.2 KB -> 15.7 KB  57.6%
   entropy                 4.498 bits/byte
   huffman                 4.531 bits/byte, 0.033 over the entropy
@@ -112,7 +112,7 @@ cli.cpp  27.2 KB -> 15.7 KB  57.6%
 - **Writes are atomic.** Output goes to a temporary file next to the target and is renamed into place only after every byte is written. A full disk or a killed process never leaves half a file under the real name.
 - **`--rm` deletes an input only when its output is safe.** When compressing, the new archive must first decode back to the exact input. When decompressing, the CRC has already been checked.
 - **Outputs keep the input's permission bits.**
-- **Terminals are refused.** `swas` won't read its input from a terminal, where it would sit waiting for typing, or write an archive to one. `-f` overrides both for `compress` and `decompress`.
+- **Terminals are refused.** `scomp` won't read its input from a terminal, where it would sit waiting for typing, or write an archive to one. `-f` overrides both for `compress` and `decompress`.
 
 ## How it works
 
@@ -175,7 +175,7 @@ The payload is either the original bytes (raw) or the canonical Huffman codes, m
 | `test_format` | header layout and validation; CRC-32 against zlib's published values and its error-detection guarantees |
 | `test_codec` | exact archives; every error status; every truncation and bit flip of an archive; both decoders must always agree |
 | `test_cli` | argument parsing, output names, size formatting, every command end to end, file modes, terminal handling |
-| `test_main` | the built `./swas` binary through real shell pipes (uses `$SWAS_BIN` if set, skipped if there is no binary) |
+| `test_main` | the built `./scomp` binary through real shell pipes (uses `$SCOMP_BIN` if set, skipped if there is no binary) |
 
 To run one binary, or a subset of its tests:
 

@@ -112,7 +112,7 @@ Outcome runCli(const ts::TempDir& io, const std::vector<std::string>& args, cons
     ::close(err);
     std::clearerr(stdin);
 
-    std::vector<std::string> storage = {"swas"};
+    std::vector<std::string> storage = {"scomp"};
     storage.insert(storage.end(), args.begin(), args.end());
     std::vector<char*> argv;
     for (auto& s : storage) argv.push_back(s.data());
@@ -580,7 +580,7 @@ TEST(OutputPathTest, DecompressStripsTheSuffix) {
     const std::vector<std::pair<std::string, std::string>> cases = {
         {"a.swas", "a"},           {"a.txt.swas", "a.txt"}, {"dir/a.txt.swas", "dir/a.txt"},
         {"a.swas.swas", "a.swas"}, {"/abs/x.swas", "/abs/x"}, {".hidden.swas", ".hidden"},
-        {"x.swas", "x"},           {"swas.swas", "swas"},   {"a b.swas", "a b"},
+        {"x.swas", "x"},           {"scomp.swas", "scomp"},   {"a b.swas", "a b"},
     };
     for (const auto& c : cases) {
         std::string out = "stale";
@@ -591,7 +591,7 @@ TEST(OutputPathTest, DecompressStripsTheSuffix) {
 
 TEST(OutputPathTest, DecompressRefusesNamesWithoutAStem) {
     for (const std::string& in : {"a", "a.SWAS", "a.Swas", "a.swa", "a.swas.", "a.swas/", "a.swasx", ".swas",
-                                  "dir/.swas", "/.swas", "swas", "", "-"}) {
+                                  "dir/.swas", "/.swas", "scomp", "", "-"}) {
         std::string out = "untouched";
         EXPECT_FALSE(cli::outputPath(in, Command::decompress, out)) << "'" << in << "'";
         EXPECT_EQ(out, "untouched") << "'" << in << "'";
@@ -717,7 +717,7 @@ protected:
 TEST_F(CliRunTest, NoArgumentsPrintUsageToStderrAndExit2) {
     const Outcome r = run({});
     EXPECT_EQ(r.code, 2);
-    EXPECT_EQ(r.err.rfind("usage: swas <command>", 0), 0u) << r.err;
+    EXPECT_EQ(r.err.rfind("usage: scomp <command>", 0), 0u) << r.err;
     EXPECT_TRUE(r.out.empty());
 }
 
@@ -732,7 +732,7 @@ TEST_F(CliRunTest, HelpPrintsUsageToStdoutAndExits0) {
          std::vector<std::vector<std::string>>{{"help"}, {"-h"}, {"--help"}, {"c", "-h"}, {"b", "x", "--help"}}) {
         const Outcome r = run(args);
         EXPECT_EQ(r.code, 0);
-        EXPECT_EQ(r.text().rfind("usage: swas <command>", 0), 0u);
+        EXPECT_EQ(r.text().rfind("usage: scomp <command>", 0), 0u);
         EXPECT_TRUE(contains(r.text(), "Exit status: 0 ok, 1 a file failed, 2 bad usage."));
         EXPECT_TRUE(r.err.empty());
     }
@@ -756,7 +756,7 @@ TEST_F(CliRunTest, BadUsageExits2WithTheReasonAndAHint) {
     for (const auto& c : cases) {
         const Outcome r = run(c.first);
         EXPECT_EQ(r.code, 2) << c.second;
-        EXPECT_EQ(r.err, "swas: " + c.second + "\n(swas help lists the commands and options)\n");
+        EXPECT_EQ(r.err, "scomp: " + c.second + "\n(scomp help lists the commands and options)\n");
         EXPECT_TRUE(r.out.empty());
     }
     expectOnly({});
@@ -807,7 +807,7 @@ TEST_F(CliRunTest, CompressRefusesToOverwriteWithoutForce) {
     put("a.swas", ts::bytesOf("keep me"));
     const Outcome r = run({"c", in});
     EXPECT_EQ(r.code, 1);
-    EXPECT_EQ(r.err, "swas: " + in + ".swas: already exists (-f overwrites it)\n");
+    EXPECT_EQ(r.err, "scomp: " + in + ".swas: already exists (-f overwrites it)\n");
     EXPECT_EQ(ts::readFile(in + ".swas"), ts::bytesOf("keep me"));
     expectOnly({"a", "a.swas"});
 }
@@ -833,7 +833,7 @@ TEST_F(CliRunTest, CompressSkipsSwasFilesUnlessForced) {
     const std::string in = put("x.swas", abracadabra());
     Outcome r = run({"c", in});
     EXPECT_EQ(r.code, 1);
-    EXPECT_EQ(r.err, "swas: " + in + ": already ends in .swas, skipped (-f compresses it anyway)\n");
+    EXPECT_EQ(r.err, "scomp: " + in + ": already ends in .swas, skipped (-f compresses it anyway)\n");
     EXPECT_FALSE(exists("x.swas.swas"));
 
     r = run({"c", "-f", in});
@@ -879,7 +879,7 @@ TEST_F(CliRunTest, CompressStdinToAFile) {
 TEST_F(CliRunTest, MissingInputFails) {
     const Outcome r = run({"c", at("ghost")});
     EXPECT_EQ(r.code, 1);
-    EXPECT_EQ(r.err, "swas: " + at("ghost") + ": cannot read: No such file or directory\n");
+    EXPECT_EQ(r.err, "scomp: " + at("ghost") + ": cannot read: No such file or directory\n");
     expectOnly({});
 }
 
@@ -887,7 +887,7 @@ TEST_F(CliRunTest, DirectoryInputFails) {
     fs::create_directory(at("sub"));
     const Outcome r = run({"c", at("sub")});
     EXPECT_EQ(r.code, 1);
-    EXPECT_EQ(r.err, "swas: " + at("sub") + ": cannot read: is a directory\n");
+    EXPECT_EQ(r.err, "scomp: " + at("sub") + ": cannot read: is a directory\n");
     expectOnly({"sub"});
 }
 
@@ -895,7 +895,7 @@ TEST_F(CliRunTest, InputAndOutputTheSameFileIsRefused) {
     const std::string in = put("a", abracadabra());
     const Outcome r = run({"c", "-f", "-o", in, in});
     EXPECT_EQ(r.code, 1);
-    EXPECT_EQ(r.err, "swas: " + in + ": input and output are the same file\n");
+    EXPECT_EQ(r.err, "scomp: " + in + ": input and output are the same file\n");
     EXPECT_EQ(ts::readFile(in), abracadabra());
 }
 
@@ -912,7 +912,7 @@ TEST_F(CliRunTest, UnwritableDestinationFailsAndLeavesNothing) {
     const std::string in = put("a", abracadabra());
     const Outcome r = run({"c", "-o", at("no/such/dir/a.swas"), in});
     EXPECT_EQ(r.code, 1);
-    EXPECT_EQ(r.err, "swas: " + at("no/such/dir/a.swas") + ": cannot write: No such file or directory\n");
+    EXPECT_EQ(r.err, "scomp: " + at("no/such/dir/a.swas") + ": cannot write: No such file or directory\n");
     expectOnly({"a"});
 }
 
@@ -1016,7 +1016,7 @@ TEST_F(CliRunTest, DecompressNeedsTheSuffixOrAnOutputName) {
     const std::string in = put("archive.bin", encoded(abracadabra()));
     Outcome r = run({"d", in});
     EXPECT_EQ(r.code, 1);
-    EXPECT_EQ(r.err, "swas: " + in + ": does not end in .swas, give the output name with -o, or use -c\n");
+    EXPECT_EQ(r.err, "scomp: " + in + ": does not end in .swas, give the output name with -o, or use -c\n");
     expectOnly({"archive.bin"});
 
     r = run({"d", "-o", at("plain"), in});
@@ -1047,7 +1047,7 @@ TEST_F(CliRunTest, CorruptArchiveFailsWithTheCodecMessageAndWritesNothing) {
     const std::string in = put("bad.swas", bad);
     const Outcome r = run({"d", in});
     EXPECT_EQ(r.code, 1);
-    EXPECT_EQ(r.err, "swas: " + in + ": " + cd::messge(cd::Status::BadChecksum) + "\n");
+    EXPECT_EQ(r.err, "scomp: " + in + ": " + cd::messge(cd::Status::BadChecksum) + "\n");
     expectOnly({"bad.swas"});
 }
 
@@ -1078,7 +1078,7 @@ TEST_F(CliRunTest, EveryDecodeFailureIsReported) {
             args.push_back(in);
             const Outcome r = run(args);
             EXPECT_EQ(r.code, 1);
-            EXPECT_EQ(r.err, "swas: " + in + ": " + cd::messge(c.second) + "\n");
+            EXPECT_EQ(r.err, "scomp: " + in + ": " + cd::messge(c.second) + "\n");
             EXPECT_TRUE(r.out.empty());
         }
     }
@@ -1170,7 +1170,7 @@ TEST_F(CliRunTest, TestReportsEveryFileAndFailsIfAnyIsBad) {
     const Outcome r = run({"t", good, broken, good});
     EXPECT_EQ(r.code, 1);
     EXPECT_EQ(r.text(), good + ": ok, 11 B\n" + good + ": ok, 11 B\n");
-    EXPECT_EQ(r.err, "swas: " + broken + ": " + cd::messge(cd::Status::BadHeader) + "\n");
+    EXPECT_EQ(r.err, "scomp: " + broken + ": " + cd::messge(cd::Status::BadHeader) + "\n");
     expectOnly({"bad.swas", "good.swas"});
 }
 
@@ -1270,7 +1270,7 @@ TEST_F(CliRunTest, InfoOnSomethingElseFails) {
     const std::string in = put("nope.swas", ts::bytesOf("hello"));
     const Outcome r = run({"i", in});
     EXPECT_EQ(r.code, 1);
-    EXPECT_EQ(r.err, "swas: " + in + ": " + cd::messge(cd::Status::BadHeader) + "\n");
+    EXPECT_EQ(r.err, "scomp: " + in + ": " + cd::messge(cd::Status::BadHeader) + "\n");
     EXPECT_TRUE(r.out.empty());
 }
 
@@ -1337,7 +1337,7 @@ TEST_F(CliRunTest, ReadingStdinFromATerminalIsRefusedForEveryCommand) {
     for (const std::string& cmd : {"c", "d", "t", "i", "b"}) {
         const Outcome r = runCli(io, {cmd}, {}, pty.slave);
         EXPECT_EQ(r.code, 2) << cmd;
-        EXPECT_EQ(r.err, "swas: stdin is a terminal, give a file or pipe the data in\n") << cmd;
+        EXPECT_EQ(r.err, "scomp: stdin is a terminal, give a file or pipe the data in\n") << cmd;
     }
 }
 
@@ -1348,7 +1348,7 @@ TEST_F(CliRunTest, WritingAnArchiveToATerminalIsRefused) {
     for (const std::vector<std::string>& args : std::vector<std::vector<std::string>>{{"c", "-c", in}, {"c", "-o", "-", in}}) {
         const Outcome r = runCli(io, args, {}, -1, pty.slave);
         EXPECT_EQ(r.code, 2);
-        EXPECT_EQ(r.err, "swas: not writing an archive to a terminal, redirect it or use -o (-f writes it anyway)\n");
+        EXPECT_EQ(r.err, "scomp: not writing an archive to a terminal, redirect it or use -o (-f writes it anyway)\n");
     }
     expectOnly({"a"});
 }

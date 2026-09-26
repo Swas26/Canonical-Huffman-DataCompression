@@ -21,7 +21,7 @@ TEST_OBJS = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(TEST_FILES))
 MAIN_OBJ = $(BUILD_DIR)/$(SRC_DIR)/main.o
 LIB_OBJS = $(filter-out $(MAIN_OBJ),$(SRC_OBJS))
 
-MAIN_TARGET = swas
+MAIN_TARGET = scomp
 # One binary per test file -- each links gtest_main, so no test .cpp has a main().
 TEST_BINS = $(patsubst $(TEST_DIR)/%.cpp,$(BUILD_DIR)/bin/%,$(TEST_FILES))
 
@@ -41,7 +41,7 @@ $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) $(DEPFLAGS) $(INCLUDES) -c $< -o $@
 
-# test_main runs the swas binary itself, so it is built first.
+# test_main runs the scomp binary itself, so it is built first.
 test: $(MAIN_TARGET) $(TEST_BINS)
 	@fail=0; for t in $(TEST_BINS); do \
 		echo "===== $$t ====="; \
@@ -51,7 +51,7 @@ test: $(MAIN_TARGET) $(TEST_BINS)
 	if [ $$fail -ne 0 ]; then echo "SOME TESTS FAILED"; fi; \
 	exit $$fail
 
-# Optimised ./swas only. The objects are rebuilt with -O2; `make clean` goes back to debug.
+# Optimised ./scomp only. The objects are rebuilt with -O2; `make clean` goes back to debug.
 release: clean
 	$(MAKE) $(MAIN_TARGET) CXXFLAGS="$(RELEASE_FLAGS)"
 

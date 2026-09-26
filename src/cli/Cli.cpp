@@ -23,10 +23,10 @@ using cli::Command;
 using cli::Options;
 
 namespace {
-    const char* const PROG = "swas";
+    const char* const PROG = "scomp";
 
     const char* const USAGE =
-        "usage: swas <command> [options] [file...]\n"
+        "usage: scomp <command> [options] [file...]\n"
         "\n"
         "commands\n"
         "  compress, c      file -> file.swas\n"
@@ -90,7 +90,7 @@ bool cli::parseArgs(const std::vector<std::string>& args, Options& o, std::strin
     const bool writes = o.cmd == Command::compress || o.cmd == Command::decompress;
     const bool decodes = o.cmd == Command::decompress || o.cmd == Command::test;
 
-    /* a flag the command does not use is an error, not something to ignore: "swas t -o x" would
+    /* a flag the command does not use is an error, not something to ignore: "scomp t -o x" would
         otherwise look like it wrote x */
     auto takes = [&](bool allowed, const std::string& flag){
         if (!allowed) err = flag + " does not apply to " + name;
