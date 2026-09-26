@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>/* required for linux*/
 #include <vector>
 /* codec ties everuthing together*/
 
